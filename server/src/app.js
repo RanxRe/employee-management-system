@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { testRouter } from "./routes/test.routes.js";
+import { employeeRouter } from "./routes/employee.routes.js";
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/test", testRouter);
+app.use("/api/employees", employeeRouter);
 
 //ERROR HANDLING MIDDLEWARE
 app.use(errorMiddleware);
