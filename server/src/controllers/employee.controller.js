@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import Employee from "../models/Employee.model.js";
 import User from "../models/User.model.js";
 
+const allowedEmploymentStatuses = ["pending", "active", "rejected", "terminated", "resigned"];
+
 export const createEmployee = async (req, res, next) => {
   const session = await mongoose.startSession();
 
@@ -123,47 +125,141 @@ export const getAllEmployee = async (req, res, next) => {
   }
 };
 
-// import Employee from "../models/Employee.model.js";
-// export const createEmployeeTest = async (req, res, next) => {
-//   try {
-//     const { user, employeeId, department, designation, joiningDate } = req.body;
+export const getEmployeeById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
 
-//     const employee = new Employee({
-//       user,
-//       employeeId,
-//       department,
-//       designation,
-//       joiningDate,
-//     });
+    const employee = await Employee.findById(id).populate("user", "-password").exec();
 
-//     await employee.save();
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found.",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      employee,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-//     return res.status(201).json({
-//       success: true,
-//       message: "Employee created successfully.",
-//       employee,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+export const updateEmploymentStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { employmentStatus } = req.body;
 
-// export const getEmployeeTest = async (req, res, next) => {
-//   try {
-//     const employee = await Employee.findById(req.params.id).populate("user", "-password").exec();
+    // 1. Validate employee ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid employee ID.",
+      });
+    }
 
-//     if (!employee) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Employee not found.",
-//       });
-//     }
+    // 2. Validate status is provided
+    if (!employmentStatus) {
+      return res.status(400).json({
+        success: false,
+        message: "Employment status is required.",
+      });
+    }
 
-//     return res.status(200).json({
-//       success: true,
-//       employee,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    // 3. Validate status value
+    if (!allowedEmploymentStatuses.includes(employmentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid employment status.",
+      });
+    }
+
+    // 4. Find employee
+    const employee = await Employee.findById(id);
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found.",
+      });
+    }
+
+    // 5. Don't allow updating to the same status
+    if (employee.employmentStatus === employmentStatus) {
+      return res.status(400).json({
+        success: false,
+        message: `Employee is already ${employmentStatus}.`,
+      });
+    }
+
+    // 6. Define allowed transitions
+    const allowedTransitions = {
+      pending: ["active", "rejected"],
+      active: ["terminated", "resigned"],
+      rejected: [],
+      terminated: [],
+      resigned: [],
+    };
+
+    const currentStatus = employee.employmentStatus;
+
+    if (!allowedTransitions[currentStatus].includes(employmentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot change employment status from ${currentStatus} to ${employmentStatus}.`,
+      });
+    }
+
+    // 7. Update status
+    employee.employmentStatus = employmentStatus;
+    await employee.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Employment status updated.",
+      employee,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEmployee = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { department, designation, joiningDate } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid employee ID.",
+      });
+    }
+    const employee = await Employee.findById(id);
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found.",
+      });
+    }
+
+    if (department !== undefined) {
+      employee.department = department;
+    }
+    if (designation !== undefined) {
+      employee.designation = designation;
+    }
+    if (joiningDate !== undefined) {
+      employee.joiningDate = joiningDate;
+    }
+
+    await employee.save();
+    return res.status(200).json({
+      success: true,
+      message: "Employee updated successfully.",
+      employee,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

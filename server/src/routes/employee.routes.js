@@ -8,6 +8,9 @@ import {
   //   getEmployeeTest,
   createEmployee,
   getAllEmployee,
+  getEmployeeById,
+  updateEmploymentStatus,
+  updateEmployee,
 } from "../controllers/employee.controller.js";
 
 export const employeeRouter = express.Router();
@@ -16,3 +19,11 @@ export const employeeRouter = express.Router();
 // employeeRouter.get("/test/:id", authenticate, authorize("admin", "super_admin"), getEmployeeTest);
 employeeRouter.post("/", authenticate, authorize("admin", "super_admin"), createEmployee);
 employeeRouter.get("/", authenticate, authorize("admin", "super_admin"), getAllEmployee);
+employeeRouter.get("/:id", authenticate, authorize("admin", "super_admin"), getEmployeeById);
+employeeRouter.patch(
+  "/:id/status",
+  authenticate,
+  authorize("admin", "super_admin"),
+  updateEmploymentStatus,
+);
+employeeRouter.patch("/:id", authenticate, authorize("admin", "super_admin"), updateEmployee);
