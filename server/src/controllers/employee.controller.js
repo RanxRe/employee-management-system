@@ -3,8 +3,6 @@ import bcrypt from "bcrypt";
 import Employee from "../models/Employee.model.js";
 import User from "../models/User.model.js";
 
-const allowedEmploymentStatuses = ["pending", "active", "rejected", "terminated", "resigned"];
-
 export const createEmployee = async (req, res, next) => {
   const session = await mongoose.startSession();
 
@@ -110,10 +108,10 @@ export const createEmployee = async (req, res, next) => {
 export const getAllEmployee = async (req, res, next) => {
   try {
     const employees = await Employee.find().populate("user", "-password").exec();
-    if (!employees.length === 0) {
+    if (employees.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Employee not found.",
+        message: "no employees found.",
       });
     }
     return res.status(200).json({
@@ -129,6 +127,12 @@ export const getEmployeeById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid employee ID.",
+      });
+    }
     const employee = await Employee.findById(id).populate("user", "-password").exec();
 
     if (!employee) {
@@ -148,6 +152,7 @@ export const getEmployeeById = async (req, res, next) => {
 
 export const updateEmploymentStatus = async (req, res, next) => {
   try {
+    const allowedEmploymentStatuses = ["pending", "active", "rejected", "terminated", "resigned"];
     const { id } = req.params;
     const { employmentStatus } = req.body;
 
@@ -258,6 +263,84 @@ export const updateEmployee = async (req, res, next) => {
       success: true,
       message: "Employee updated successfully.",
       employee,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateAccountStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // 1. Validate Employee ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid employee ID.",
+      });
+    }
+
+    // 2. Validate status
+    const allowedAccountStatuses = ["active", "inactive", "suspended"];
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Account status is required.",
+      });
+    }
+
+    if (!allowedAccountStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid account status.",
+      });
+    }
+
+    // 3. Find Employee
+    const employee = await Employee.findById(id);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found.",
+      });
+    }
+
+    // 4. Find the associated User
+    const user = await User.findById(employee.user);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Associated user account not found.",
+      });
+    }
+
+    // 5. Check if status is already the same
+    if (user.status === status) {
+      return res.status(400).json({
+        success: false,
+        message: `Account is already ${status}.`,
+      });
+    }
+
+    // 6. Update User status
+    user.status = status;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Account status updated successfully.",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        status: user.status,
+      },
     });
   } catch (error) {
     next(error);

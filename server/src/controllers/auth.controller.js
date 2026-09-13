@@ -67,6 +67,13 @@ export const signIn = async (req, res, next) => {
       });
     }
 
+    if (user.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is not active.",
+      });
+    }
+
     const token = JWT.sign({ userId: user._id, role: user.role }, ENV.JWT_SECRET, {
       expiresIn: ENV.JWT_EXPIRES_IN,
     });

@@ -11,6 +11,7 @@ import {
   getEmployeeById,
   updateEmploymentStatus,
   updateEmployee,
+  updateAccountStatus,
 } from "../controllers/employee.controller.js";
 
 export const employeeRouter = express.Router();
@@ -25,5 +26,11 @@ employeeRouter.patch(
   authenticate,
   authorize("admin", "super_admin"),
   updateEmploymentStatus,
+);
+employeeRouter.patch(
+  "/:id/account-status",
+  authenticate,
+  authorize("admin", "super_admin"),
+  updateAccountStatus,
 );
 employeeRouter.patch("/:id", authenticate, authorize("admin", "super_admin"), updateEmployee);
