@@ -107,7 +107,10 @@ export const createEmployee = async (req, res, next) => {
 
 export const getAllEmployee = async (req, res, next) => {
   try {
-    const employees = await Employee.find().populate("user", "-password").exec();
+    const employees = await Employee.find()
+      .populate("user", "-password")
+      .populate("department")
+      .exec();
     if (employees.length === 0) {
       return res.status(404).json({
         success: false,
@@ -116,6 +119,7 @@ export const getAllEmployee = async (req, res, next) => {
     }
     return res.status(200).json({
       success: true,
+      count: employees.length,
       employees,
     });
   } catch (error) {
@@ -133,7 +137,10 @@ export const getEmployeeById = async (req, res, next) => {
         message: "Invalid employee ID.",
       });
     }
-    const employee = await Employee.findById(id).populate("user", "-password").exec();
+    const employee = await Employee.findById(id)
+      .populate("user", "-password")
+      .populate("department")
+      .exec();
 
     if (!employee) {
       return res.status(404).json({
