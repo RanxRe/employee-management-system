@@ -110,6 +110,7 @@ export const getAllEmployee = async (req, res, next) => {
     const employees = await Employee.find()
       .populate("user", "-password")
       .populate("department")
+      .populate("designation")
       .exec();
     if (employees.length === 0) {
       return res.status(404).json({
@@ -140,6 +141,7 @@ export const getEmployeeById = async (req, res, next) => {
     const employee = await Employee.findById(id)
       .populate("user", "-password")
       .populate("department")
+      .populate("designation")
       .exec();
 
     if (!employee) {

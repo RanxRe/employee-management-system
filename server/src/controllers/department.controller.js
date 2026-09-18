@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Department from "../models/Department.model.js";
+import Employee from "../models/Employee.model.js";
 
 export const createDepartment = async (req, res, next) => {
   try {
@@ -159,6 +160,38 @@ export const updateDepartmentStatus = async (req, res, next) => {
     return res.status(200).json({
       message: `Department set to ${status}.`,
       department,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteDepartment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const department = await Department.findById(id);
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: "Department not found.",
+      });
+    }
+
+    const employee = await Employee.findOne({
+      department: department._id,
+    });
+
+    if (employee) {
+      return res.status(409).json({
+        success: false,
+        message: "Cannot delete already assigned department.",
+      });
+    }
+
+    await Department.findByIdAndDelete(id);
+    return res.status(200).json({
+      success: true,
+      message: "Department deleted successfully.",
     });
   } catch (error) {
     next(error);

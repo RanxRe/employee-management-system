@@ -20,13 +20,12 @@ const employeeSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "departments",
       required: true,
-      trim: true,
     },
 
     designation: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "designations",
       required: true,
-      trim: true,
     },
 
     joiningDate: {
