@@ -2,6 +2,14 @@ import mongoose from "mongoose";
 import Employee from "../models/Employee.model.js";
 import Attendance from "../models/Attendence.model.js";
 
+const getStartOfDay = (date) => {
+  const day = new Date(date);
+
+  day.setHours(0, 0, 0, 0);
+
+  return day;
+};
+
 export const createAttendance = async (req, res, next) => {
   try {
     const { employee, date, checkIn, checkOut, status, remarks } = req.body;
@@ -30,7 +38,8 @@ export const createAttendance = async (req, res, next) => {
     }
 
     //check duplicate attendance
-    const existingAttendance = await Attendance.findOne({ employee, date });
+    const attendanceDate = getStartOfDay(date);
+    const existingAttendance = await Attendance.findOne({ employee, date: attendanceDate });
     if (existingAttendance) {
       return res.status(409).json({
         success: false,
@@ -41,7 +50,7 @@ export const createAttendance = async (req, res, next) => {
     //Create attendance
     const attendance = await Attendance.create({
       employee,
-      date,
+      date: getStartOfDay(date),
       checkIn,
       checkOut,
       status,
@@ -60,7 +69,68 @@ export const createAttendance = async (req, res, next) => {
 
 export const getAllAttendance = async (req, res, next) => {
   try {
-    const attendance = await Attendance.find()
+    const { employee, date, from, to } = req.query;
+    const filter = {};
+    if (employee) {
+      if (!mongoose.Types.ObjectId.isValid(employee))
+        return res.status(400).json({
+          success: false,
+          message: "Invalid employee ID",
+        });
+      filter.employee = employee;
+    }
+
+    if (date) {
+      const startOfDay = new Date(date);
+      const endOfDay = new Date(date);
+
+      if (isNaN(startOfDay.getTime()) || isNaN(endOfDay.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date.",
+        });
+      }
+
+      startOfDay.setHours(0, 0, 0, 0);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      filter.date = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
+    }
+
+    if (from || to) {
+      const startDate = from ? new Date(from) : null;
+      const endDate = to ? new Date(to) : null;
+
+      if ((startDate && isNaN(startDate.getTime())) || (endDate && isNaN(endDate.getTime()))) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date range.",
+        });
+      }
+
+      if (startDate) {
+        startDate.setHours(0, 0, 0, 0);
+      }
+
+      if (endDate) {
+        endDate.setHours(23, 59, 59, 999);
+      }
+
+      filter.date = {};
+
+      if (startDate) {
+        filter.date.$gte = startDate;
+      }
+
+      if (endDate) {
+        filter.date.$lte = endDate;
+      }
+    }
+
+    const attendance = await Attendance.find(filter)
       .populate({ path: "employee", populate: { path: "user", select: "-password" } })
       .sort({ date: -1 })
       .exec();
@@ -203,8 +273,7 @@ export const checkIn = async (req, res, next) => {
     // 2. Get today's date
     const now = new Date();
 
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDay = getStartOfDay(now);
 
     const endOfDay = new Date(now);
     endOfDay.setHours(23, 59, 59, 999);
@@ -228,7 +297,7 @@ export const checkIn = async (req, res, next) => {
     // 4. Create attendance
     const attendance = await Attendance.create({
       employee: employee._id,
-      date: now,
+      date: startOfDay,
       checkIn: now,
       status: "present",
     });
@@ -298,6 +367,37 @@ export const checkOut = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Check-out successful.",
+      attendance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyAttendance = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({
+      user: req.user._id,
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    const attendance = await Attendance.find({ employee: employee._id }).sort({ date: -1 }).exec();
+    if (attendance.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No attendance record found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: attendance.length,
       attendance,
     });
   } catch (error) {
