@@ -51,6 +51,29 @@ export const createLeave = async (req, res, next) => {
       });
     }
 
+    const overlappingLeave = await Leave.findOne({
+      employee: employee._id,
+
+      status: {
+        $in: ["pending", "approved"],
+      },
+
+      startDate: {
+        $lte: end,
+      },
+
+      endDate: {
+        $gte: start,
+      },
+    });
+
+    if (overlappingLeave) {
+      return res.status(409).json({
+        success: false,
+        message: "You already have a pending or approved leave for these dates.",
+      });
+    }
+
     const leave = await Leave.create({
       employee: employee._id,
       leaveType,
@@ -334,6 +357,31 @@ export const updateMyLeave = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Start date cannot be after end date.",
+      });
+    }
+
+    const overlappingLeave = await Leave.findOne({
+      _id: { $ne: leave._id },
+
+      employee: employee._id,
+
+      status: {
+        $in: ["pending", "approved"],
+      },
+
+      startDate: {
+        $lte: leave.endDate,
+      },
+
+      endDate: {
+        $gte: leave.startDate,
+      },
+    });
+
+    if (overlappingLeave) {
+      return res.status(409).json({
+        success: false,
+        message: "The updated leave dates overlap with another pending or approved leave.",
       });
     }
 
