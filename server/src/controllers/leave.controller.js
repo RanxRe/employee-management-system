@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Employee from "../models/Employee.model.js";
 import Leave from "../models/Leave.model.js";
+import Notification from "../models/Notification.model.js";
 
 export const createLeave = async (req, res, next) => {
   try {
@@ -163,7 +164,13 @@ export const updateLeaveStatus = async (req, res, next) => {
       });
     }
 
-    const leave = await Leave.findById(id);
+    const leave = await Leave.findById(id).populate({
+      path: "employee",
+      populate: {
+        path: "user",
+        select: "_id",
+      },
+    });
 
     if (!leave) {
       return res.status(404).json({
@@ -185,6 +192,20 @@ export const updateLeaveStatus = async (req, res, next) => {
     leave.reviewComment = reviewComment?.trim() || "";
 
     await leave.save();
+
+    const notificationTitle = status === "approved" ? "Leave Approved" : "Leave Rejected";
+
+    const notificationMessage =
+      status === "approved"
+        ? `Your ${leave.leaveType} leave from ${leave.startDate.toLocaleDateString()} to ${leave.endDate.toLocaleDateString()} has been approved.`
+        : `Your ${leave.leaveType} leave from ${leave.startDate.toLocaleDateString()} to ${leave.endDate.toLocaleDateString()} has been rejected.`;
+
+    await Notification.create({
+      recipient: leave.employee.user._id,
+      title: notificationTitle,
+      message: notificationMessage,
+      type: "leave",
+    });
 
     return res.status(200).json({
       success: true,

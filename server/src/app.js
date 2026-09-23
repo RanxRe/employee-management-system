@@ -10,6 +10,7 @@ import { designationRouter } from "./routes/designation.routes.js";
 import { attendanceRouter } from "./routes/attendance.routes.js";
 import { leaveRouter } from "./routes/leave.routes.js";
 import { payrollRouter } from "./routes/payroll.routes.js";
+import { notificationRouter } from "./routes/notification.routes.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/designations", designationRouter);
 app.use("/api/attendances", attendanceRouter);
 app.use("/api/leaves", leaveRouter);
 app.use("/api/payroll", payrollRouter);
+app.use("/api/notifications", notificationRouter);
 
 //ERROR HANDLING MIDDLEWARE
 app.use(errorMiddleware);

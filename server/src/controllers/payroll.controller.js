@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Employee from "../models/Employee.model.js";
 import Payroll from "../models/Payroll.model.js";
+import Notification from "../models/Notification.model.js";
 
 export const createPayroll = async (req, res, next) => {
   try {
@@ -310,16 +311,20 @@ export const updatePayrollStatus = async (req, res, next) => {
       });
     }
 
-    const allowedStatuses = ["draft", "processed", "paid"];
-
-    if (!allowedStatuses.includes(status)) {
+    if (!["draft", "processed", "paid"].includes(status)) {
       return res.status(400).json({
         success: false,
         message: "Invalid payroll status.",
       });
     }
 
-    const payroll = await Payroll.findById(id);
+    const payroll = await Payroll.findById(id).populate({
+      path: "employee",
+      populate: {
+        path: "user",
+        select: "_id",
+      },
+    });
 
     if (!payroll) {
       return res.status(404).json({
@@ -328,46 +333,54 @@ export const updatePayrollStatus = async (req, res, next) => {
       });
     }
 
-    // Prevent moving backwards
-    if (payroll.status === "processed" && status === "draft") {
+    // Prevent updating to the same status
+    if (payroll.status === status) {
       return res.status(409).json({
         success: false,
-        message: "Processed payroll cannot be moved back to draft.",
+        message: `Payroll is already ${status}.`,
       });
     }
 
-    if (payroll.status === "paid" && status !== "paid") {
-      return res.status(409).json({
-        success: false,
-        message: "Paid payroll cannot be moved to another status.",
-      });
+    // draft → processed
+    if (payroll.status === "draft" && status === "processed") {
+      payroll.status = status;
     }
 
-    if (payroll.status === "draft" && status === "paid") {
-      return res.status(409).json({
-        success: false,
-        message: "Payroll must be processed before it can be paid.",
-      });
-    }
-
-    payroll.status = status;
-
-    if (status === "paid") {
+    // processed → paid
+    else if (payroll.status === "processed" && status === "paid") {
+      payroll.status = status;
       payroll.paymentDate = new Date();
+    }
+
+    // Invalid transition
+    else {
+      return res.status(409).json({
+        success: false,
+        message: `Cannot change payroll status from ${payroll.status} to ${status}.`,
+      });
     }
 
     await payroll.save();
 
+    // Create notification only when salary is paid
+    if (status === "paid") {
+      await Notification.create({
+        recipient: payroll.employee.user._id,
+        title: "Salary Paid",
+        message: `Your salary for ${payroll.month}/${payroll.year} has been paid.`,
+        type: "payroll",
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      message: `Payroll status updated to ${status}.`,
+      message: `Payroll ${status} successfully.`,
       payroll,
     });
   } catch (error) {
     next(error);
   }
 };
-
 export const updatePayroll = async (req, res, next) => {
   try {
     const { id } = req.params;
