@@ -355,3 +355,171 @@ export const updateAccountStatus = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getMyProfile = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({
+      user: req.user._id,
+    })
+      .populate({
+        path: "user",
+        select: "-password",
+      })
+      .populate("department")
+      .populate("designation")
+      .exec();
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      employee,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateMyProfile = async (req, res, next) => {
+  try {
+    const { name, email } = req.body;
+
+    if (name === undefined && email === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Name or email is required.",
+      });
+    }
+
+    const employee = await Employee.findOne({
+      user: req.user._id,
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Name cannot be empty.",
+        });
+      }
+
+      user.name = name.trim();
+    }
+
+    if (email !== undefined) {
+      const normalizedEmail = email.toLowerCase().trim();
+
+      if (!normalizedEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Email cannot be empty.",
+        });
+      }
+
+      const existingUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: req.user._id },
+      });
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: "Email already exists.",
+        });
+      }
+
+      user.email = normalizedEmail;
+    }
+
+    await user.save();
+
+    const updatedEmployee = await Employee.findById(employee._id)
+      .populate({
+        path: "user",
+        select: "-password",
+      })
+      .populate("department")
+      .populate("designation");
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully.",
+      employee: updatedEmployee,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const changeMyPassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required.",
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 8 characters long.",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect.",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPassword;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};

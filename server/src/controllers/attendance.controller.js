@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import Employee from "../models/Employee.model.js";
 import Attendance from "../models/Attendence.model.js";
+import { calculateDistance } from "../utils/distance.js";
+import { ENV } from "../utils/env.js";
 
 const getStartOfDay = (date) => {
   const day = new Date(date);
@@ -256,6 +258,13 @@ export const checkIn = async (req, res, next) => {
       user: req.user._id,
     });
 
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
     if (employee.employmentStatus !== "active") {
       return res.status(403).json({
         success: false,
@@ -263,10 +272,72 @@ export const checkIn = async (req, res, next) => {
       });
     }
 
-    if (!employee) {
-      return res.status(404).json({
+    const { latitude, longitude, accuracy } = req.body;
+
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({
         success: false,
-        message: "Employee profile not found.",
+        message: "Latitude and longitude are required.",
+      });
+    }
+
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude and longitude must be numbers.",
+      });
+    }
+
+    if (latitude < -90 || latitude > 90) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid latitude.",
+      });
+    }
+
+    if (longitude < -180 || longitude > 180) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid longitude.",
+      });
+    }
+
+    if (accuracy === undefined || accuracy === null) {
+      return res.status(400).json({
+        success: false,
+        message: "GPS accuracy is required.",
+      });
+    }
+
+    if (typeof accuracy !== "number" || accuracy <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "GPS accuracy must be a positive number.",
+      });
+    }
+
+    if (accuracy > ENV.MAX_GPS_ACCURACY_METERS) {
+      return res.status(403).json({
+        success: false,
+        message: "GPS accuracy is too low for attendance verification.",
+        accuracy,
+        maximumAllowedAccuracy: ENV.MAX_GPS_ACCURACY_METERS,
+      });
+    }
+
+    const distanceFromOffice = calculateDistance(
+      ENV.OFFICE_LATITUDE,
+      ENV.OFFICE_LONGITUDE,
+      latitude,
+      longitude,
+    );
+
+    if (distanceFromOffice > ENV.OFFICE_RADIUS_METERS) {
+      return res.status(403).json({
+        success: false,
+        message: "You are outside the allowed office location.",
+        distanceFromOffice: Math.round(distanceFromOffice),
+        allowedRadius: ENV.OFFICE_RADIUS_METERS,
       });
     }
 
@@ -297,9 +368,16 @@ export const checkIn = async (req, res, next) => {
     // 4. Create attendance
     const attendance = await Attendance.create({
       employee: employee._id,
-      date: startOfDay,
+      date: now,
       checkIn: now,
       status: "present",
+      location: {
+        latitude,
+        longitude,
+        accuracy: accuracy ?? null,
+        distanceFromOffice: Math.round(distanceFromOffice * 100) / 100,
+        verified: true,
+      },
     });
 
     return res.status(201).json({

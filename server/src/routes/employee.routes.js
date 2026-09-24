@@ -12,6 +12,9 @@ import {
   updateEmploymentStatus,
   updateEmployee,
   updateAccountStatus,
+  getMyProfile,
+  updateMyProfile,
+  changeMyPassword,
 } from "../controllers/employee.controller.js";
 
 export const employeeRouter = express.Router();
@@ -20,6 +23,9 @@ export const employeeRouter = express.Router();
 // employeeRouter.get("/test/:id", authenticate, authorize("admin", "super_admin"), getEmployeeTest);
 employeeRouter.post("/", authenticate, authorize("admin", "super_admin"), createEmployee);
 employeeRouter.get("/", authenticate, authorize("admin", "super_admin"), getAllEmployee);
+employeeRouter.get("/me", authenticate, authorize("employee"), getMyProfile);
+employeeRouter.patch("/me", authenticate, authorize("employee"), updateMyProfile);
+employeeRouter.patch("/me/password", authenticate, authorize("employee"), changeMyPassword);
 employeeRouter.get("/:id", authenticate, authorize("admin", "super_admin"), getEmployeeById);
 employeeRouter.patch(
   "/:id/status",
