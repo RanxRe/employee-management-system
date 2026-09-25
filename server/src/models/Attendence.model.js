@@ -57,6 +57,48 @@ const attendanceSchema = new mongoose.Schema(
         default: false,
       },
     },
+
+    selfie: {
+      url: {
+        type: String,
+        default: null,
+      },
+      publicId: {
+        type: String,
+        default: null,
+      },
+      capturedAt: {
+        type: Date,
+        default: null,
+      },
+      verified: {
+        type: Boolean,
+        default: false,
+      },
+    },
+
+    checkOutLocation: {
+      latitude: {
+        type: Number,
+        default: null,
+      },
+      longitude: {
+        type: Number,
+        default: null,
+      },
+      accuracy: {
+        type: Number,
+        default: null,
+      },
+      distanceFromOffice: {
+        type: Number,
+        default: null,
+      },
+      verified: {
+        type: Boolean,
+        default: false,
+      },
+    },
   },
   {
     timestamps: true,

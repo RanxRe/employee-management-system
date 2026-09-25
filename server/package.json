@@ -14,12 +14,14 @@
   "description": "Server for my Employee Management System",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.4",
-    "morgan": "^1.12.0"
+    "morgan": "^1.12.0",
+    "multer": "^2.4.0"
   }
 }
