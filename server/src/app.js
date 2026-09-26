@@ -1,5 +1,6 @@
 import express from "express";
 import morgan from "morgan";
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { authRouter } from "./routes/auth.routes.js";
@@ -18,6 +19,11 @@ import leaveBalanceRouter from "./routes/leaveBalance.routes.js";
 const app = express();
 
 //MIDDLEWARES
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+  }),
+);
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
