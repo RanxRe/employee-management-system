@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import Employee from "../models/Employee.model.js";
+import Attendance from "../models/Attendence.model.js";
+import Leave from "../models/Leave.model.js";
+import LeaveBalance from "../models/leaveBalance.model.js";
+import Payroll from "../models/Payroll.model.js";
+import Notification from "../models/Notification.model.js";
 import User from "../models/User.model.js";
 
 export const createEmployee = async (req, res, next) => {
@@ -518,6 +523,117 @@ export const changeMyPassword = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Password changed successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyDashboard = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({
+      user: req.user._id,
+    })
+      .populate({
+        path: "user",
+        select: "-password",
+      })
+      .populate("department")
+      .populate("designation");
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    const currentYear = new Date().getFullYear();
+
+    const [attendance, leaveSummary, leaveBalances, latestPayroll, unreadNotifications] =
+      await Promise.all([
+        // Today's attendance
+        Attendance.findOne({
+          employee: employee._id,
+          date: {
+            $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            $lte: new Date(new Date().setHours(23, 59, 59, 999)),
+          },
+        }),
+
+        // Leave summary
+        Leave.aggregate([
+          {
+            $match: {
+              employee: employee._id,
+            },
+          },
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+
+        // Current year's leave balances
+        LeaveBalance.find({
+          employee: employee._id,
+          year: currentYear,
+        }).sort({ leaveType: 1 }),
+
+        // Latest payroll
+        Payroll.findOne({
+          employee: employee._id,
+        }).sort({
+          year: -1,
+          month: -1,
+        }),
+
+        // Unread notification count
+        Notification.countDocuments({
+          recipient: req.user._id,
+          isRead: false,
+        }),
+      ]);
+
+    const leaves = {
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      cancelled: 0,
+    };
+
+    leaveSummary.forEach((item) => {
+      if (Object.prototype.hasOwnProperty.call(leaves, item._id)) {
+        leaves[item._id] = item.count;
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      dashboard: {
+        profile: employee,
+
+        attendance: {
+          today: attendance || null,
+        },
+
+        leaves,
+
+        leaveBalances: {
+          year: currentYear,
+          balances: leaveBalances,
+        },
+
+        payroll: {
+          latest: latestPayroll || null,
+        },
+
+        notifications: {
+          unreadCount: unreadNotifications,
+        },
+      },
     });
   } catch (error) {
     next(error);

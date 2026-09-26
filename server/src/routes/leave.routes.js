@@ -6,6 +6,7 @@ import {
   getAllLeaves,
   getLeaveById,
   getMyLeaves,
+  getMyLeaveSummary,
   updateLeaveStatus,
   updateMyLeave,
 } from "../controllers/leave.controller.js";
@@ -14,6 +15,7 @@ export const leaveRouter = express.Router();
 
 leaveRouter.post("/", authenticate, authorize("employee"), createLeave);
 leaveRouter.get("/my", authenticate, authorize("employee"), getMyLeaves);
+leaveRouter.get("/my/summary", authenticate, authorize("employee"), getMyLeaveSummary);
 leaveRouter.get("/", authenticate, authorize("admin", "super_admin"), getAllLeaves);
 leaveRouter.patch(
   "/:id/status",

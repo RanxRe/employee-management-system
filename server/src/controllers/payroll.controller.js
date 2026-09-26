@@ -479,3 +479,95 @@ export const updatePayroll = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getMyPayrollSummary = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({
+      user: req.user._id,
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    const currentYear = new Date().getFullYear();
+
+    const summary = await Payroll.aggregate([
+      {
+        $match: {
+          employee: employee._id,
+          year: currentYear,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+
+          totalRecords: {
+            $sum: 1,
+          },
+
+          totalBasicSalary: {
+            $sum: "$basicSalary",
+          },
+
+          totalAllowances: {
+            $sum: "$allowances",
+          },
+
+          totalDeductions: {
+            $sum: "$deductions",
+          },
+
+          totalNetSalary: {
+            $sum: "$netSalary",
+          },
+
+          draft: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "draft"] }, 1, 0],
+            },
+          },
+
+          processed: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "processed"] }, 1, 0],
+            },
+          },
+
+          paid: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "paid"] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    const result = summary[0] || {
+      totalRecords: 0,
+      totalBasicSalary: 0,
+      totalAllowances: 0,
+      totalDeductions: 0,
+      totalNetSalary: 0,
+      draft: 0,
+      processed: 0,
+      paid: 0,
+    };
+
+    delete result._id;
+
+    return res.status(200).json({
+      success: true,
+      summary: {
+        year: currentYear,
+        ...result,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

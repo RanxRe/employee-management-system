@@ -15,6 +15,7 @@ import {
   getMyProfile,
   updateMyProfile,
   changeMyPassword,
+  getMyDashboard,
 } from "../controllers/employee.controller.js";
 
 export const employeeRouter = express.Router();
@@ -26,6 +27,7 @@ employeeRouter.get("/", authenticate, authorize("admin", "super_admin"), getAllE
 employeeRouter.get("/me", authenticate, authorize("employee"), getMyProfile);
 employeeRouter.patch("/me", authenticate, authorize("employee"), updateMyProfile);
 employeeRouter.patch("/me/password", authenticate, authorize("employee"), changeMyPassword);
+employeeRouter.get("/me/dashboard", authenticate, authorize("employee"), getMyDashboard);
 employeeRouter.get("/:id", authenticate, authorize("admin", "super_admin"), getEmployeeById);
 employeeRouter.patch(
   "/:id/status",

@@ -5,6 +5,7 @@ import {
   createPayroll,
   getAllPayroll,
   getMyPayroll,
+  getMyPayrollSummary,
   getPayrollById,
   updatePayroll,
   updatePayrollStatus,
@@ -15,6 +16,7 @@ export const payrollRouter = express.Router();
 payrollRouter.post("/", authenticate, authorize("admin", "super_admin"), createPayroll);
 payrollRouter.get("/", authenticate, authorize("admin", "super_admin"), getAllPayroll);
 payrollRouter.get("/my", authenticate, authorize("employee"), getMyPayroll);
+payrollRouter.get("/my/summary", authenticate, authorize("employee"), getMyPayrollSummary);
 payrollRouter.patch(
   "/:id/status",
   authenticate,

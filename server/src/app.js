@@ -13,6 +13,7 @@ import { payrollRouter } from "./routes/payroll.routes.js";
 import { notificationRouter } from "./routes/notification.routes.js";
 import { dashboardRouter } from "./routes/dashboard.routes.js";
 import { adminRouter } from "./routes/admin.routes.js";
+import leaveBalanceRouter from "./routes/leaveBalance.routes.js";
 
 const app = express();
 
@@ -37,7 +38,7 @@ app.use("/api/payroll", payrollRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/admins", adminRouter);
-
+app.use("/api/leave-balances", leaveBalanceRouter);
 //ERROR HANDLING MIDDLEWARE
 app.use(errorMiddleware);
 

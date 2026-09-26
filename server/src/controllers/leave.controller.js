@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Employee from "../models/Employee.model.js";
 import Leave from "../models/Leave.model.js";
 import Notification from "../models/Notification.model.js";
+import LeaveBalance from "../models/leaveBalance.model.js";
 
 export const createLeave = async (req, res, next) => {
   try {
@@ -146,6 +147,8 @@ export const getAllLeaves = async (req, res, next) => {
 };
 
 export const updateLeaveStatus = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
   try {
     const { id } = req.params;
     const { status, reviewComment } = req.body;
@@ -164,15 +167,21 @@ export const updateLeaveStatus = async (req, res, next) => {
       });
     }
 
-    const leave = await Leave.findById(id).populate({
-      path: "employee",
-      populate: {
-        path: "user",
-        select: "_id",
-      },
-    });
+    session.startTransaction();
+
+    const leave = await Leave.findById(id)
+      .populate({
+        path: "employee",
+        populate: {
+          path: "user",
+          select: "_id",
+        },
+      })
+      .session(session);
 
     if (!leave) {
+      await session.abortTransaction();
+
       return res.status(404).json({
         success: false,
         message: "Leave request not found.",
@@ -180,10 +189,67 @@ export const updateLeaveStatus = async (req, res, next) => {
     }
 
     if (leave.status !== "pending") {
+      await session.abortTransaction();
+
       return res.status(409).json({
         success: false,
         message: "Only pending leave requests can be reviewed.",
       });
+    }
+
+    const startDate = new Date(leave.startDate);
+    const endDate = new Date(leave.endDate);
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    const millisecondsPerDay = 1000 * 60 * 60 * 24;
+
+    const leaveDays =
+      Math.floor((endDate.getTime() - startDate.getTime()) / millisecondsPerDay) + 1;
+
+    if (status === "approved") {
+      if (startDate.getFullYear() !== endDate.getFullYear()) {
+        await session.abortTransaction();
+
+        return res.status(400).json({
+          success: false,
+          message: "Leave spanning multiple calendar years cannot be approved yet.",
+        });
+      }
+
+      const leaveYear = startDate.getFullYear();
+
+      const leaveBalance = await LeaveBalance.findOne({
+        employee: leave.employee._id,
+        year: leaveYear,
+        leaveType: leave.leaveType,
+      }).session(session);
+
+      if (!leaveBalance) {
+        await session.abortTransaction();
+
+        return res.status(400).json({
+          success: false,
+          message: "Leave balance has not been allocated for this employee, year and leave type.",
+        });
+      }
+
+      if (leaveBalance.remaining < leaveDays) {
+        await session.abortTransaction();
+
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient leave balance.",
+          requestedDays: leaveDays,
+          remainingDays: leaveBalance.remaining,
+        });
+      }
+
+      leaveBalance.used += leaveDays;
+      leaveBalance.remaining -= leaveDays;
+
+      await leaveBalance.save({ session });
     }
 
     leave.status = status;
@@ -191,7 +257,7 @@ export const updateLeaveStatus = async (req, res, next) => {
     leave.reviewedAt = new Date();
     leave.reviewComment = reviewComment?.trim() || "";
 
-    await leave.save();
+    await leave.save({ session });
 
     const notificationTitle = status === "approved" ? "Leave Approved" : "Leave Rejected";
 
@@ -200,12 +266,19 @@ export const updateLeaveStatus = async (req, res, next) => {
         ? `Your ${leave.leaveType} leave from ${leave.startDate.toLocaleDateString()} to ${leave.endDate.toLocaleDateString()} has been approved.`
         : `Your ${leave.leaveType} leave from ${leave.startDate.toLocaleDateString()} to ${leave.endDate.toLocaleDateString()} has been rejected.`;
 
-    await Notification.create({
-      recipient: leave.employee.user._id,
-      title: notificationTitle,
-      message: notificationMessage,
-      type: "leave",
-    });
+    await Notification.create(
+      [
+        {
+          recipient: leave.employee.user._id,
+          title: notificationTitle,
+          message: notificationMessage,
+          type: "leave",
+        },
+      ],
+      { session },
+    );
+
+    await session.commitTransaction();
 
     return res.status(200).json({
       success: true,
@@ -213,7 +286,10 @@ export const updateLeaveStatus = async (req, res, next) => {
       leave,
     });
   } catch (error) {
+    await session.abortTransaction();
     next(error);
+  } finally {
+    await session.endSession();
   }
 };
 
@@ -423,6 +499,66 @@ export const updateMyLeave = async (req, res, next) => {
       success: true,
       message: "Leave request updated successfully.",
       leave,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyLeaveSummary = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({
+      user: req.user._id,
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    const currentYear = new Date().getFullYear();
+
+    const summary = await Leave.aggregate([
+      {
+        $match: {
+          employee: employee._id,
+          startDate: {
+            $gte: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+            $lt: new Date(`${currentYear + 1}-01-01T00:00:00.000Z`),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$status",
+          count: {
+            $sum: 1,
+          },
+        },
+      },
+    ]);
+
+    const result = {
+      year: currentYear,
+      total: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      cancelled: 0,
+    };
+
+    summary.forEach((item) => {
+      if (Object.prototype.hasOwnProperty.call(result, item._id)) {
+        result[item._id] = item.count;
+        result.total += item.count;
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      summary: result,
     });
   } catch (error) {
     next(error);

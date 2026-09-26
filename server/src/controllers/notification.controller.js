@@ -89,3 +89,29 @@ export const getUnreadNotifications = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getMyNotificationSummary = async (req, res, next) => {
+  try {
+    const [total, unread] = await Promise.all([
+      Notification.countDocuments({
+        recipient: req.user._id,
+      }),
+
+      Notification.countDocuments({
+        recipient: req.user._id,
+        isRead: false,
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      summary: {
+        total,
+        unread,
+        read: total - unread,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
