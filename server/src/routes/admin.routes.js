@@ -6,6 +6,7 @@ import {
   createAdmin,
   getAdminById,
   getAllAdmins,
+  getMyProfile,
   updateAdmin,
   updateAdminPassword,
   updateAdminStatus,
@@ -15,9 +16,7 @@ export const adminRouter = express.Router();
 
 adminRouter.get("/", authenticate, authorize("super_admin"), getAllAdmins);
 adminRouter.post("/", authenticate, authorize("super_admin"), createAdmin);
-adminRouter.patch("/:id/status", authenticate, authorize("super_admin"), updateAdminStatus);
-adminRouter.get("/:id", authenticate, authorize("super_admin"), getAdminById);
-adminRouter.patch("/:id", authenticate, authorize("super_admin"), updateAdmin);
+adminRouter.get("/me", authenticate, authorize("admin", "super_admin"), getMyProfile);
 // Admin/Super Admin changes their own password
 adminRouter.patch(
   "/me/password",
@@ -25,6 +24,8 @@ adminRouter.patch(
   authorize("admin", "super_admin"),
   changeMyPassword,
 );
-
+adminRouter.patch("/:id/status", authenticate, authorize("super_admin"), updateAdminStatus);
 // Super Admin changes an admin's password
 adminRouter.patch("/:id/password", authenticate, authorize("super_admin"), updateAdminPassword);
+adminRouter.get("/:id", authenticate, authorize("super_admin"), getAdminById);
+adminRouter.patch("/:id", authenticate, authorize("super_admin"), updateAdmin);

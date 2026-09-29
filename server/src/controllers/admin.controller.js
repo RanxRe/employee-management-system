@@ -367,3 +367,23 @@ export const updateAdminPassword = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getMyProfile = async (req, res, next) => {
+  try {
+    const user = await User.findOne(req.user._id).select("-password").exec();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
