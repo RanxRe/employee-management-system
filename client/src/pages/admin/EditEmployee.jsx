@@ -224,12 +224,13 @@ function EditEmployee() {
                                 Select department
                             </option>
 
-                            {departments.map((department) => (
+                            {departments.filter((department) => department.status === "active" || department._id === formData.department).map((department) => (
                                 <option
                                     key={department._id}
                                     value={department._id}
                                 >
                                     {department.name}
+                                    {department.status === "inactive" ? " (Inactive)" : ""}
                                 </option>
                             ))}
                         </select>

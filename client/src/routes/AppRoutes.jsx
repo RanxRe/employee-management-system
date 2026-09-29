@@ -14,6 +14,9 @@ import CreateEmployee from "@/pages/admin/CreateEmployee";
 import EditEmployee from "@/pages/admin/EditEmployee";
 import Departments from "@/pages/admin/Departments";
 import CreateDepartment from "@/pages/admin/CreateDepartment";
+import EditDepartment from "@/pages/admin/EditDepartment";
+import Designations from "@/pages/admin/Designations";
+import CreateDesignation from "@/pages/admin/CreateDesignation";
 
 function AppRoutes() {
     return (
@@ -33,7 +36,13 @@ function AppRoutes() {
 
                         <Route path="/departments" element={<Departments />} />
 
+                        <Route path="/designations" element={<Designations />} />
+
+                        <Route path="/designations/create" element={<CreateDesignation />} />
+
                         <Route path="/departments/create" element={<CreateDepartment />} />
+
+                        <Route path="/departments/:id/edit" element={<EditDepartment />} />
 
                         <Route path="/employees" element={<Employees />} />
 

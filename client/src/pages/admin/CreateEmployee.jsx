@@ -264,7 +264,7 @@ function CreateEmployee() {
                                         : "Select department"}
                                 </option>
 
-                                {departments.map((department) => (
+                                {departments.filter((department) => department.status === "active").map((department) => (
                                     <option
                                         key={department._id}
                                         value={department._id}
