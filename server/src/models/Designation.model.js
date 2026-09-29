@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { toTitleCase } from "../utils/toTitleCase.js";
 
 const designationSchema = new mongoose.Schema(
   {
@@ -6,6 +7,7 @@ const designationSchema = new mongoose.Schema(
       type: String,
       unique: true,
       trim: true,
+      set: toTitleCase,
     },
     status: {
       type: String,
