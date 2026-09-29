@@ -295,7 +295,7 @@ function CreateEmployee() {
                                         : "Select designation (optional)"}
                                 </option>
 
-                                {designations.map((designation) => (
+                                {designations.filter((designation) => designation.status === "active").map((designation) => (
                                     <option
                                         key={designation._id}
                                         value={designation._id}

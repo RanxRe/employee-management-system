@@ -253,12 +253,13 @@ function EditEmployee() {
                                 Select designation (optional)
                             </option>
 
-                            {designations.map((designation) => (
+                            {designations.filter((designation) => designation.status === "active" || designation._id === formData.designation).map((designation) => (
                                 <option
                                     key={designation._id}
                                     value={designation._id}
                                 >
                                     {designation.name}
+                                    {designation.status === "inactive" ? " (Inactive)" : ""}
                                 </option>
                             ))}
                         </select>

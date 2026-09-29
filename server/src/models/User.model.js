@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { toTitleCase } from "../utils/toTitleCase.js";
 
 const userSchema = mongoose.Schema(
   {
@@ -11,6 +12,7 @@ const userSchema = mongoose.Schema(
       type: String,
       required: [true, "Name is required."],
       trim: true,
+      set: toTitleCase,
     },
     email: {
       type: String,

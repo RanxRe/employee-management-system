@@ -38,7 +38,7 @@ const navigationItems = [
     },
     {
         label: "Attendance",
-        path: "/attendance",
+        path: "/attendances",
         icon: CalendarCheck,
     },
     {
