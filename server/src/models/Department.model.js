@@ -1,4 +1,13 @@
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
+
+// function to capitalize the first letter
+const toTitleCase = (val) => {
+  if (typeof val !== "string") return val;
+  return val
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
 
 const departmentSchema = new mongoose.Schema(
   {
@@ -7,6 +16,7 @@ const departmentSchema = new mongoose.Schema(
       required: [true, "Department name is required."],
       unique: true,
       trim: true,
+      set: toTitleCase,
     },
     description: {
       type: String,
