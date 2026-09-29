@@ -7,6 +7,13 @@ import RoleTest from "@/pages/common/RoleTest";
 import ProtectedRoute from "@/routes/ProtectedRoutes";
 import PublicRoute from "@/routes/PublicRoutes";
 import RoleRoute from "@/routes/RoleRoutes";
+import AdminLayout from "@/layouts/AdminLayouts";
+import Employees from "@/pages/admin/Employees";
+import EmployeeDetails from "@/pages/admin/EmployeeDetails";
+import CreateEmployee from "@/pages/admin/CreateEmployee";
+import EditEmployee from "@/pages/admin/EditEmployee";
+import Departments from "@/pages/admin/Departments";
+import CreateDepartment from "@/pages/admin/CreateDepartment";
 
 function AppRoutes() {
     return (
@@ -21,10 +28,21 @@ function AppRoutes() {
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
 
-                    <Route
-                        path="/dashboard"
-                        element={<Dashboard />}
-                    />
+                    <Route element={<AdminLayout />}>
+                        <Route path="/dashboard" element={<Dashboard />} />
+
+                        <Route path="/departments" element={<Departments />} />
+
+                        <Route path="/departments/create" element={<CreateDepartment />} />
+
+                        <Route path="/employees" element={<Employees />} />
+
+                        <Route path="/employees/create" element={<CreateEmployee />} />
+
+                        <Route path="/employees/:id/edit" element={<EditEmployee />} />
+
+                        <Route path="/employees/:id" element={<EmployeeDetails />} />
+                    </Route>
 
                     {/* Admin routes */}
                     <Route
