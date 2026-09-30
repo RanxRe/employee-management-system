@@ -1,83 +1,57 @@
 import {
     LayoutDashboard,
-    Users,
-    Building2,
-    BriefcaseBusiness,
     CalendarCheck,
     CalendarDays,
+    WalletCards,
     Wallet,
     Bell,
-    ShieldCheck,
+    UserCircle,
     X,
-    WalletCards,
-    UserCircle
 } from "lucide-react";
 
 import { NavLink } from "react-router";
+
 import { Button } from "@/components/ui/button";
-import { useSelector } from "react-redux";
 
 const navigationItems = [
     {
         label: "Dashboard",
-        path: "/dashboard",
+        path: "/employee/dashboard",
         icon: LayoutDashboard,
     },
     {
-        label: "Employees",
-        path: "/employees",
-        icon: Users,
-    },
-    {
-        label: "Departments",
-        path: "/departments",
-        icon: Building2,
-    },
-    {
-        label: "Designations",
-        path: "/designations",
-        icon: BriefcaseBusiness,
-    },
-    {
-        label: "Attendance",
-        path: "/attendances",
+        label: "My Attendance",
+        path: "/employee/attendance",
         icon: CalendarCheck,
     },
     {
-        label: "Leave",
-        path: "/leave",
+        label: "My Leave",
+        path: "/employee/leave",
         icon: CalendarDays,
     },
     {
         label: "Leave Balance",
-        path: "/leave-balances",
+        path: "/employee/leave-balances",
         icon: WalletCards,
     },
     {
-        label: "Payroll",
-        path: "/payroll",
+        label: "My Payroll",
+        path: "/employee/payroll",
         icon: Wallet,
     },
     {
         label: "Notifications",
-        path: "/notifications",
+        path: "/employee/notifications",
         icon: Bell,
     },
     {
-        label: "Admin Management",
-        path: "/admin-management",
-        icon: ShieldCheck,
-    },
-    {
         label: "My Profile",
-        path: "/my-profile",
+        path: "/employee/profile",
         icon: UserCircle,
-    }
+    },
 ];
 
-function Sidebar({ isOpen, onClose }) {
-
-    const { user } = useSelector((state) => state.auth);
+function EmployeeSidebar({ isOpen, onClose }) {
     return (
         <>
             {/* Mobile overlay */}
@@ -105,11 +79,11 @@ function Sidebar({ isOpen, onClose }) {
                     <div className="flex items-center justify-between border-b px-6 py-5">
                         <div>
                             <h2 className="text-lg font-semibold">
-                                Admin Panel
+                                Employee Panel
                             </h2>
 
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Manage your organization
+                                Manage your account
                             </p>
                         </div>
 
@@ -127,13 +101,7 @@ function Sidebar({ isOpen, onClose }) {
 
                     {/* Navigation */}
                     <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-                        {navigationItems.filter((item) => {
-                            if (item.path === "/admin-management") {
-                                return user?.role === "super_admin";
-                            }
-
-                            return true;
-                        }).map((item) => {
+                        {navigationItems.map((item) => {
                             const Icon = item.icon;
 
                             return (
@@ -164,4 +132,4 @@ function Sidebar({ isOpen, onClose }) {
     );
 }
 
-export default Sidebar;
+export default EmployeeSidebar;

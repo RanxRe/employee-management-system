@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Search, X, Plus } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,11 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import { getAllAttendance } from "@/services/attendance.service";
+import { getAllEmployees } from "@/services/employee.service";
 
 function Attendance() {
     const navigate = useNavigate();
@@ -17,28 +21,108 @@ function Attendance() {
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [employees, setEmployees] = useState([]);
+    const [loadingEmployees, setLoadingEmployees] = useState(true);
+
+    const [filters, setFilters] = useState({
+        employee: "",
+        date: "",
+        from: "",
+        to: "",
+    });
+
+
 
     useEffect(() => {
-        const fetchAttendance = async () => {
+        const fetchEmployees = async () => {
             try {
-                setLoading(true);
-                setError("");
+                setLoadingEmployees(true);
 
-                const data = await getAllAttendance();
-                console.log(data);
-                setAttendance(data.attendance || []);
+                const data = await getAllEmployees();
+
+                setEmployees(data.employees || []);
             } catch (err) {
-                setError(
-                    err.response?.data?.message ||
-                    "Failed to load attendance records."
+                console.error(
+                    "Failed to load employees:",
+                    err
                 );
             } finally {
-                setLoading(false);
+                setLoadingEmployees(false);
             }
         };
 
+        fetchEmployees();
+    }, []);
+
+    const fetchAttendance = async (params = {}) => {
+        try {
+            setLoading(true);
+            setError("");
+
+            const data = await getAllAttendance(params);
+
+            setAttendance(data.attendance || []);
+        } catch (err) {
+            setAttendance([]);
+
+            setError(
+                err.response?.data?.message ||
+                "Failed to load attendance records."
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchAttendance();
     }, []);
+
+    const handleFilterChange = (event) => {
+        const { name, value } = event.target;
+
+        setFilters((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const handleSearch = (event) => {
+        event.preventDefault();
+
+        const params = {};
+
+        if (filters.employee.trim()) {
+            params.employee = filters.employee.trim();
+        }
+
+        if (filters.date) {
+            params.date = filters.date;
+        } else {
+            if (filters.from) {
+                params.from = filters.from;
+            }
+
+            if (filters.to) {
+                params.to = filters.to;
+            }
+        }
+
+        fetchAttendance(params);
+    };
+
+    const handleClearFilters = () => {
+        const emptyFilters = {
+            employee: "",
+            date: "",
+            from: "",
+            to: "",
+        };
+
+        setFilters(emptyFilters);
+
+        fetchAttendance();
+    };
 
     const formatDate = (date) => {
         if (!date) return "—";
@@ -58,17 +142,137 @@ function Attendance() {
     return (
         <div className="space-y-6">
             {/* Page Header */}
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">
-                    Attendance
-                </h1>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        Attendance
+                    </h1>
 
-                <p className="text-sm text-muted-foreground">
-                    Manage employee attendance records.
-                </p>
+                    <p className="text-sm text-muted-foreground">
+                        Manage employee attendance records.
+                    </p>
+                </div>
+
+                <Button
+                    onClick={() => navigate("/attendances/create")}
+                >
+                    <Plus className="size-4" />
+                    Create Attendance
+                </Button>
             </div>
 
-            {/* Attendance Card */}
+            {/* Filters */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Filter Attendance</CardTitle>
+                </CardHeader>
+
+                <CardContent>
+                    <form
+                        onSubmit={handleSearch}
+                        className="space-y-5"
+                    >
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {/* Employee */}
+                            <div className="space-y-2">
+                                <Label htmlFor="employee">
+                                    Employee
+                                </Label>
+
+                                <select
+                                    id="employee"
+                                    name="employee"
+                                    value={filters.employee}
+                                    onChange={handleFilterChange}
+                                    disabled={loadingEmployees}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                                >
+                                    <option value="">
+                                        {loadingEmployees
+                                            ? "Loading employees..."
+                                            : "All employees"}
+                                    </option>
+
+                                    {employees.map((employee) => (
+                                        <option
+                                            key={employee._id}
+                                            value={employee._id}
+                                        >
+                                            {employee.employeeId} —{" "}
+                                            {employee.user?.name || "Unknown"}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Specific Date */}
+                            <div className="space-y-2">
+                                <Label htmlFor="date">
+                                    Specific Date
+                                </Label>
+
+                                <Input
+                                    id="date"
+                                    name="date"
+                                    type="date"
+                                    value={filters.date}
+                                    onChange={handleFilterChange}
+                                />
+                            </div>
+
+                            {/* From */}
+                            <div className="space-y-2">
+                                <Label htmlFor="from">
+                                    From Date
+                                </Label>
+
+                                <Input
+                                    id="from"
+                                    name="from"
+                                    type="date"
+                                    value={filters.from}
+                                    onChange={handleFilterChange}
+                                    disabled={Boolean(filters.date)}
+                                />
+                            </div>
+
+                            {/* To */}
+                            <div className="space-y-2">
+                                <Label htmlFor="to">
+                                    To Date
+                                </Label>
+
+                                <Input
+                                    id="to"
+                                    name="to"
+                                    type="date"
+                                    value={filters.to}
+                                    onChange={handleFilterChange}
+                                    disabled={Boolean(filters.date)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                            <Button type="submit">
+                                <Search className="size-4" />
+                                Search
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleClearFilters}
+                            >
+                                <X className="size-4" />
+                                Clear Filters
+                            </Button>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
+
+            {/* Attendance Table */}
             <Card>
                 <CardHeader>
                     <CardTitle>Attendance Records</CardTitle>
@@ -184,7 +388,7 @@ function Attendance() {
                                                         size="sm"
                                                         onClick={() =>
                                                             navigate(
-                                                                `/attendance/${record._id}`
+                                                                `/attendances/${record._id}`
                                                             )
                                                         }
                                                     >

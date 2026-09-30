@@ -13,6 +13,7 @@ export const loginUser = async (credentials) => {
     user: {
       _id: decodedToken.userId,
       role: decodedToken.role,
+      name: decodedToken.name,
     },
   };
 };

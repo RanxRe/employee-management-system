@@ -36,15 +36,19 @@ api.interceptors.request.use(
  * Handles authentication failures globally.
  */
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-
+  (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      store.dispatch(logout());
+      const requestUrl = error.config?.url;
 
-      window.location.href = "/login";
+      const isLoginRequest = requestUrl?.includes("/auth/signin");
+
+      const isChangePasswordRequest = requestUrl?.includes("/admins/me/password");
+
+      if (!isLoginRequest && !isChangePasswordRequest) {
+        store.dispatch(logout());
+        window.location.href = "/login";
+      }
     }
 
     return Promise.reject(error);

@@ -75,7 +75,7 @@ function AttendanceDetails() {
             <div className="space-y-4">
                 <Button
                     variant="outline"
-                    onClick={() => navigate("/attendance")}
+                    onClick={() => navigate("/attendances")}
                 >
                     <ArrowLeft className="size-4" />
                     Back to Attendance
@@ -105,7 +105,7 @@ function AttendanceDetails() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Button
                     variant="outline"
-                    onClick={() => navigate("/attendance")}
+                    onClick={() => navigate("/attendances")}
                 >
                     <ArrowLeft className="size-4" />
                     Back

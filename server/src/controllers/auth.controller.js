@@ -74,7 +74,7 @@ export const signIn = async (req, res, next) => {
       });
     }
 
-    const token = JWT.sign({ userId: user._id, role: user.role }, ENV.JWT_SECRET, {
+    const token = JWT.sign({ userId: user._id, role: user.role, name: user.name }, ENV.JWT_SECRET, {
       expiresIn: ENV.JWT_EXPIRES_IN,
     });
 

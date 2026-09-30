@@ -20,6 +20,24 @@ import CreateDesignation from "@/pages/admin/CreateDesignation";
 import EditDesignation from "@/pages/admin/EditDesignation";
 import Attendance from "@/pages/admin/Attendance";
 import AttendanceDetails from "@/pages/admin/AttendanceDetails";
+import CreateAttendance from "@/pages/admin/CreateAttendance";
+import CheckIn from "@/pages/employee/CheckIn";
+import Leave from "@/pages/admin/Leave";
+import LeaveDetails from "@/pages/admin/LeaveDetails";
+import LeaveBalance from "@/pages/admin/LeaveBalance";
+import CreateLeaveBalance from "@/pages/admin/CreateLeaveBalances";
+import Payroll from "@/pages/admin/Payroll";
+import PayrollDetails from "@/pages/admin/PayrollDetails";
+import CreatePayroll from "@/pages/admin/CreatePayroll";
+import EditPayroll from "@/pages/admin/EditPayroll";
+import AdminManagement from "@/pages/admin/AdminManagement";
+import NotFound from "@/pages/common/NotFound";
+import CreateAdmin from "@/pages/admin/CreateAdmin";
+import AdminDetails from "@/pages/admin/AdminDetails";
+import EditAdmin from "@/pages/admin/EditAdmin";
+import MyProfile from "@/pages/common/MyProfile";
+import MyPassword from "@/pages/common/MyPassword";
+import EmployeeLayout from "@/layouts/EmployeeLayouts";
 
 function AppRoutes() {
     return (
@@ -32,69 +50,87 @@ function AppRoutes() {
                 </Route>
 
                 {/* Protected routes */}
+                {/* Admin/Super_Admin Routes */}
                 <Route element={<ProtectedRoute />}>
+                    <Route element={<RoleRoute allowedRoles={["admin", "super_admin"]} />}>
+                        <Route element={<AdminLayout />}>
 
-                    <Route element={<AdminLayout />}>
+                            {/* Dashboard */}
+                            <Route path="/dashboard" element={<Dashboard />} />
 
-                        <Route path="/attendances" element={<Attendance />} />
+                            {/* Employees */}
+                            <Route path="/employees" element={<Employees />} />
+                            <Route path="/employees/create" element={<CreateEmployee />} />
+                            <Route path="/employees/:id/edit" element={<EditEmployee />} />
+                            <Route path="/employees/:id" element={<EmployeeDetails />} />
 
-                        <Route path="/attendance/:id" element={<AttendanceDetails />} />
+                            {/* Departments */}
+                            <Route path="/departments" element={<Departments />} />
+                            <Route path="/departments/create" element={<CreateDepartment />} />
+                            <Route path="/departments/:id/edit" element={<EditDepartment />} />
 
-                        <Route path="/dashboard" element={<Dashboard />} />
+                            {/* Designations */}
+                            <Route path="/designations" element={<Designations />} />
+                            <Route path="/designations/create" element={<CreateDesignation />} />
+                            <Route path="/designations/:id/edit" element={<EditDesignation />} />
 
-                        <Route path="/designations" element={<Designations />} />
+                            {/* Attendance */}
+                            <Route path="/attendances" element={<Attendance />} />
+                            <Route path="attendances/create" element={<CreateAttendance />} />
+                            <Route path="/attendances/check-in" element={<CheckIn />} />
+                            <Route path="/attendances/:id" element={<AttendanceDetails />} />
 
-                        <Route path="/designations/create" element={<CreateDesignation />} />
+                            {/* Leave */}
+                            <Route path="/leave" element={<Leave />} />
+                            <Route path="/leave/:id" element={<LeaveDetails />} />
 
-                        <Route path="/designations/:id/edit" element={<EditDesignation />} />
+                            {/* Leave Balances */}
+                            <Route path="/leave-balances" element={<LeaveBalance />} />
+                            <Route path="/leave-balances/create" element={<CreateLeaveBalance />} />
 
-                        <Route path="/departments" element={<Departments />} />
-
-                        <Route path="/departments/create" element={<CreateDepartment />} />
-
-                        <Route path="/departments/:id/edit" element={<EditDepartment />} />
-
-                        <Route path="/employees" element={<Employees />} />
-
-                        <Route path="/employees/create" element={<CreateEmployee />} />
-
-                        <Route path="/employees/:id/edit" element={<EditEmployee />} />
-
-                        <Route path="/employees/:id" element={<EmployeeDetails />} />
+                            {/* Payroll */}
+                            <Route path="/payroll" element={<Payroll />} />
+                            <Route path="/payroll/create" element={<CreatePayroll />} />
+                            <Route path="/payroll/:id/edit" element={<EditPayroll />} />
+                            <Route path="/payroll/:id" element={<PayrollDetails />} />
+                            {/* Notification */}
+                            {/* Admin Management */}
+                            <Route path="/admin-management" element={<AdminManagement />} />
+                            <Route path="/my-profile" element={<MyProfile />} />
+                            <Route path="/my-password" element={<MyPassword />} />
+                        </Route>
                     </Route>
 
-                    {/* Admin routes */}
-                    <Route
-                        element={
-                            <RoleRoute
-                                allowedRoles={["admin", "super_admin"]}
-                            />
-                        }
-                    >
-                        <Route
-                            path="/admin-test"
-                            element={<RoleTest />}
-                        />
+                    {/* Super Admin Routes */}
+                    <Route element={<RoleRoute allowedRoles={["super_admin"]} />}>
+                        <Route element={<AdminLayout />}>
+
+                            <Route path="/admin-management" element={<AdminManagement />} />
+                            <Route path="/admin-management/create" element={<CreateAdmin />} />
+                            <Route path="/admin-management/:id/edit" element={<EditAdmin />} />
+                            <Route path="/admin-management/:id" element={<AdminDetails />} />
+                        </Route>
                     </Route>
+
 
                     {/* Employee routes */}
                     <Route
                         element={
-                            <RoleRoute
-                                allowedRoles={["employee"]}
-                            />
+                            <RoleRoute allowedRoles={["employee"]} />
                         }
                     >
-                        <Route
-                            path="/employee-test"
-                            element={<RoleTest />}
-                        />
+                        <Route element={<EmployeeLayout />}>
+                            <Route
+                                path="/employee/dashboard"
+                                element={<RoleTest />}
+                            />
+                        </Route>
                     </Route>
-
                 </Route>
 
+                <Route path="*" element={<NotFound />} />
             </Routes>
-        </BrowserRouter>
+        </BrowserRouter >
     );
 }
 

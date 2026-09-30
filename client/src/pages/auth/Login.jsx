@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { login } from "@/store/slices/authSlice";
 import { loginUser } from "@/services/auth.service";
-import { useNavigate, useLocation } from "react-router";
+import { useNavigate } from "react-router";
 
 import {
     Card,
@@ -45,9 +45,14 @@ function Login() {
 
         try {
             const data = await loginUser(formData);
+            console.log("LOGIN DATA:", data);
+            console.log("USER ROLE:", data.user.role);
             dispatch(login(data));
-            const from = location.state?.from?.pathname || "/dashboard";
-            navigate(from, { replace: true });
+
+            const destination = data.user?.role === "employee" ? "/employee/dashboard" : "/dashboard";
+            console.log("DESTINATION:", destination);
+            navigate(destination, { replace: true });
+
         } catch (error) {
             console.error("Login error:", error);
 
