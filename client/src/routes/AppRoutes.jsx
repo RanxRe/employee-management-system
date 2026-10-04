@@ -38,6 +38,8 @@ import EditAdmin from "@/pages/admin/EditAdmin";
 import MyProfile from "@/pages/common/MyProfile";
 import MyPassword from "@/pages/common/MyPassword";
 import EmployeeLayout from "@/layouts/EmployeeLayouts";
+import EmployeeDashboard from "@/pages/employee/EmployeeDashboard";
+import EmployeeCheckIn from "@/pages/employee/EmployeeCheckIn";
 
 function AppRoutes() {
     return (
@@ -120,10 +122,8 @@ function AppRoutes() {
                         }
                     >
                         <Route element={<EmployeeLayout />}>
-                            <Route
-                                path="/employee/dashboard"
-                                element={<RoleTest />}
-                            />
+                            <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+                            <Route path="/employee/attendance" element={<EmployeeCheckIn />} />
                         </Route>
                     </Route>
                 </Route>

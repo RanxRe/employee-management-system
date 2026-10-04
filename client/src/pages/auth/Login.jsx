@@ -45,12 +45,9 @@ function Login() {
 
         try {
             const data = await loginUser(formData);
-            console.log("LOGIN DATA:", data);
-            console.log("USER ROLE:", data.user.role);
             dispatch(login(data));
 
             const destination = data.user?.role === "employee" ? "/employee/dashboard" : "/dashboard";
-            console.log("DESTINATION:", destination);
             navigate(destination, { replace: true });
 
         } catch (error) {

@@ -64,7 +64,11 @@ export const checkIn = async (attendanceData) => {
     }
   });
 
-  const response = await api.post("/attendances/check-in", formData);
+  const response = await api.post("/attendances/check-in", formData, {
+    headers: {
+      "Content-Type": undefined,
+    },
+  });
 
   return response.data;
 };
