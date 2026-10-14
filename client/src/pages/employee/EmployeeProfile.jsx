@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getStatusClass } from "@/utils/statusColor";
 
 const formatDate = (date) => {
     if (!date) return "—";
@@ -41,23 +42,6 @@ const formatDate = (date) => {
         year: "numeric",
         timeZone: "Asia/Kolkata",
     });
-};
-
-const getStatusClass = (status) => {
-    switch (status?.toLowerCase()) {
-        case "active":
-        case "approved":
-            return "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300";
-        case "pending":
-            return "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-300";
-        case "rejected":
-        case "terminated":
-        case "resigned":
-        case "inactive":
-            return "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300";
-        default:
-            return "border-border bg-muted text-muted-foreground";
-    }
 };
 
 function DetailItem({ label, value }) {

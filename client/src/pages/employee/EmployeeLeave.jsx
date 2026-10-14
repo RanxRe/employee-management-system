@@ -12,6 +12,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { getLeaveStatusClass } from "@/utils/statusColor";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 
@@ -24,18 +25,6 @@ function formatDate(dateString) {
         year: "numeric",
         timeZone: "Asia/Kolkata",
     });
-
-}
-
-function getStatusClass(status) {
-    const classes = {
-        pending: "border-yellow-500/40 bg-yellow-500/10 text-yellow-700",
-        approved: "border-green-500/40 bg-green-500/10 text-green-700",
-        rejected: "border-destructive/30 bg-destructive/10 text-destructive",
-        cancelled: "border-muted bg-muted text-muted-foreground",
-    };
-
-    return classes[status] || "border-muted bg-muted text-muted-foreground";
 
 }
 
@@ -250,7 +239,7 @@ function EmployeeLeave() {
                                         </div>
 
                                         <span
-                                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium capitalize ${getStatusClass(leave.status)}`}
+                                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium capitalize ${getLeaveStatusClass(leave.status)}`}
                                         >
                                             {leave.status}
                                         </span>

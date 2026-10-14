@@ -12,6 +12,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { getAttendanceStatusClass } from "@/utils/statusColor";
 
 function formatDate(dateString) {
     if (!dateString) return "—";
@@ -197,7 +198,7 @@ function EmployeeAttendance() {
                                             </td>
 
                                             <td className="px-3 py-3">
-                                                <span className="inline-flex rounded-full border px-2 py-1 text-xs capitalize">
+                                                <span className={`inline-flex rounded-full border px-2 py-1 text-xs capitalize ${getAttendanceStatusClass(record.status)}`}>
                                                     {record.status}
                                                 </span>
                                             </td>
