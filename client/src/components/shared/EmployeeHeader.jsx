@@ -38,7 +38,7 @@ function EmployeeHeader({ isSidebarOpen, onMenuClick }) {
                 </Button>
 
                 <h1 className="text-base font-semibold sm:text-lg">
-                    Employee Portal
+                    Employee Management System
                 </h1>
             </div>
 

@@ -37,7 +37,7 @@ const navigationItems = [
     },
     {
         label: "Leave Balance",
-        path: "/employee/leave-balances",
+        path: "/employee/leave-balance",
         icon: WalletCards,
     },
     {

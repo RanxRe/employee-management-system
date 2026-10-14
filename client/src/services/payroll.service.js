@@ -52,6 +52,5 @@ export const getMyPayroll = async (params = {}) => {
 
 export const getMyPayrollSummary = async () => {
   const response = await api.get("/payroll/my/summary");
-
   return response.data;
 };

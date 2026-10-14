@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from "react-router";
 
 import Login from "@/pages/auth/Login";
 import Dashboard from "@/pages/common/Dashboard";
-import RoleTest from "@/pages/common/RoleTest";
 
 import ProtectedRoute from "@/routes/ProtectedRoutes";
 import PublicRoute from "@/routes/PublicRoutes";
@@ -44,6 +43,10 @@ import EmployeeAttendance from "@/pages/employee/EmployeeAttendance";
 import EmployeeLeave from "@/pages/employee/EmployeeLeave";
 import CreateLeave from "@/pages/employee/CreateLeave";
 import EditLeave from "@/pages/employee/EditLeave";
+import EmployeeLeaveBalance from "@/pages/employee/EmployeeLeaveBalance";
+import EmployeePayroll from "@/pages/employee/EmployeePayroll";
+import EmployeeNotifications from "@/pages/employee/EmployeeNotification";
+import EmployeeProfile from "@/pages/employee/EmployeeProfile";
 
 function AppRoutes() {
     return (
@@ -131,6 +134,10 @@ function AppRoutes() {
                             <Route path="/employee/attendances/my" element={<EmployeeAttendance />} />
                             <Route path="/employee/leave" element={<EmployeeLeave />} />
                             <Route path="/employee/leave/create" element={<CreateLeave />} />
+                            <Route path="/employee/leave-balance" element={<EmployeeLeaveBalance />} />
+                            <Route path="/employee/payroll" element={<EmployeePayroll />} />
+                            <Route path="/employee/notifications" element={<EmployeeNotifications />} />
+                            <Route path="/employee/profile" element={<EmployeeProfile />} />
                             <Route path="/employee/leave/:id/edit" element={<EditLeave />} />
                         </Route>
                     </Route>
