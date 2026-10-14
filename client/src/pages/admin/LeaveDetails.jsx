@@ -342,6 +342,7 @@ function LeaveDetails() {
 
                         <div className="flex flex-col gap-2 sm:flex-row">
                             <Button
+                                variant="success"
                                 onClick={() => handleReview("approved")}
                                 disabled={reviewLoading}
                                 className="sm:w-auto"

@@ -7,6 +7,7 @@ import {
     Bell,
     UserCircle,
     X,
+    BookOpen,
 } from "lucide-react";
 
 import { NavLink } from "react-router";
@@ -20,9 +21,14 @@ const navigationItems = [
         icon: LayoutDashboard,
     },
     {
-        label: "My Attendance",
+        label: "Attendance",
         path: "/employee/attendance",
         icon: CalendarCheck,
+    },
+    {
+        label: "My Attendance",
+        path: "/employee/attendances/my",
+        icon: BookOpen,
     },
     {
         label: "My Leave",

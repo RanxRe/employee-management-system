@@ -40,6 +40,10 @@ import MyPassword from "@/pages/common/MyPassword";
 import EmployeeLayout from "@/layouts/EmployeeLayouts";
 import EmployeeDashboard from "@/pages/employee/EmployeeDashboard";
 import EmployeeCheckIn from "@/pages/employee/EmployeeCheckIn";
+import EmployeeAttendance from "@/pages/employee/EmployeeAttendance";
+import EmployeeLeave from "@/pages/employee/EmployeeLeave";
+import CreateLeave from "@/pages/employee/CreateLeave";
+import EditLeave from "@/pages/employee/EditLeave";
 
 function AppRoutes() {
     return (
@@ -124,6 +128,10 @@ function AppRoutes() {
                         <Route element={<EmployeeLayout />}>
                             <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
                             <Route path="/employee/attendance" element={<EmployeeCheckIn />} />
+                            <Route path="/employee/attendances/my" element={<EmployeeAttendance />} />
+                            <Route path="/employee/leave" element={<EmployeeLeave />} />
+                            <Route path="/employee/leave/create" element={<CreateLeave />} />
+                            <Route path="/employee/leave/:id/edit" element={<EditLeave />} />
                         </Route>
                     </Route>
                 </Route>
