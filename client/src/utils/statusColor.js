@@ -58,3 +58,13 @@ export const getAttendanceStatusClass = (status) => {
   };
   return classes[status] || "border-muted bg-muted text-muted-foreground";
 };
+
+export const currentAvailabilityStatusClass = (breakStatus) => {
+  const classes = {
+    Available: "border-green-500/40 bg-green-500/10 text-green-700",
+    "On Break": "border-yellow-500/40 bg-yellow-500/10 text-yellow-700",
+    "Checked Out": "border-destructive/30 bg-destructive/10 text-destructive",
+    "Not Checked In": "border-muted bg-muted text-muted-foreground",
+  };
+  return classes[breakStatus] || "border-muted bg-muted text-muted-foreground";
+};

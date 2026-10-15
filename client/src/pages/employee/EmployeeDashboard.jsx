@@ -1,18 +1,96 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getMyEmployeeDashboard } from "@/services/employee.service";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { getEmploymentStatusClass } from "@/utils/statusColor";
+import { getMyTodayAttendance, startBreak, endBreak } from "@/services/attendance.service"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { currentAvailabilityStatusClass, getEmploymentStatusClass } from "@/utils/statusColor";
+import { Button } from "@/components/ui/button";
 
 function EmployeeDashboard() {
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+
+    const [todayAttendance, setTodayAttendance] = useState(null);
+    const [attendanceFetchedAt, setAttendanceFetchedAt] = useState(Date.now());
+    const [currentTime, setCurrentTime] = useState(Date.now());
+    const [breakActionLoading, setBreakActionLoading] = useState(false);
+    const [attendanceError, setAttendanceError] = useState("");
+
+    const fetchTodayAttendance = useCallback(async () => {
+        try {
+            setAttendanceError("");
+
+            const response = await getMyTodayAttendance();
+
+            setTodayAttendance(response);
+            setAttendanceFetchedAt(Date.now());
+        } catch (error) {
+            console.error("Today's attendance error:", error);
+            setAttendanceError(
+                error.response?.data?.message ||
+                "Unable to load today's attendance."
+            );
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchTodayAttendance();
+    }, [fetchTodayAttendance]);
+
+    // Update the displayed timer every second.
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(Date.now());
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
+
+    const breakStatus = todayAttendance?.breakStatus ?? "Not Checked In";
+
+    const extraElapsedMs = Math.max(0, currentTime - attendanceFetchedAt);
+
+    const workingMs =
+        (todayAttendance?.workingMs ?? 0) +
+        (breakStatus === "Available" ? extraElapsedMs : 0);
+
+    const totalBreakMs =
+        (todayAttendance?.totalBreakMs ?? 0) +
+        (breakStatus === "On Break" ? extraElapsedMs : 0);
+
+    const formatDuration = (milliseconds = 0) => {
+        const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        return [hours, minutes, seconds]
+            .map((value) => String(value).padStart(2, "0"))
+            .join(":");
+    };
+
+    const handleBreakAction = async () => {
+        try {
+            setBreakActionLoading(true);
+            setAttendanceError("");
+
+            if (breakStatus === "On Break") {
+                await endBreak();
+            } else {
+                await startBreak();
+            }
+
+            await fetchTodayAttendance();
+        } catch (error) {
+            console.error("Break action error:", error);
+            setAttendanceError(
+                error.response?.data?.message ||
+                "Unable to update your break status."
+            );
+        } finally {
+            setBreakActionLoading(false);
+        }
+    };
 
     useEffect(() => {
         const fetchDashboard = async () => {
@@ -66,6 +144,40 @@ function EmployeeDashboard() {
         );
     }
 
+    const summaryCards = [
+        {
+            label: "Today's Attendance",
+            value: dashboard.attendance.today
+                ? dashboard.attendance.today.status
+                : "Not marked",
+            color: "border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/40",
+            valueColor: "text-blue-700 dark:text-blue-300",
+        },
+        {
+            label: "Pending Leaves",
+            value: dashboard.leaves.pending,
+            color: "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30",
+            valueColor: "text-amber-700 dark:text-amber-300",
+        },
+        {
+            label: "Approved",
+            value: dashboard.leaveBalances.balances.reduce(
+                (total, balance) => total + balance.remaining,
+                0
+            ),
+            mutedText: "Total remaining leaves",
+            color: "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30",
+            valueColor: "text-green-700 dark:text-green-300",
+        },
+        {
+            label: "Notification",
+            value: dashboard.notifications.unreadCount,
+            mutedText: "Unread notifications",
+            color: "border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/30",
+            valueColor: "text-purple-700 dark:text-purple-300",
+        },
+    ];
+
     const profile = dashboard.profile;
 
     return (
@@ -80,6 +192,104 @@ function EmployeeDashboard() {
                     Here's an overview of your employee account.
                 </p>
             </div>
+
+            {/* Dashboard Summary */}
+
+            {/* Dashboard Summary */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {summaryCards.map((item) => (
+                    <Card
+                        key={item.label}
+                        className={item.color}
+                    >
+                        <CardHeader>
+                            <CardTitle className="text-base">
+                                {item.label}
+                            </CardTitle>
+                        </CardHeader>
+
+                        <CardContent>
+                            <p className={`text-2xl font-bold ${item.valueColor}`}>
+                                {item.value}
+                            </p>
+
+                            {item.mutedText && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {item.mutedText}
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            {/* Today's Working Hours and Break */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Today's Work Session</CardTitle>
+                    <CardDescription>
+                        Track your working hours and breaks for today.
+                    </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-5">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="rounded-lg border p-4">
+                            <p className="text-sm text-muted-foreground">
+                                Working Time
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold tabular-nums">
+                                {formatDuration(workingMs)}
+                            </p>
+                        </div>
+
+                        <div className="rounded-lg border p-4">
+                            <p className="text-sm text-muted-foreground">
+                                Total Break Time
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold tabular-nums">
+                                {formatDuration(totalBreakMs)}
+                            </p>
+                        </div>
+
+                        <div className="rounded-lg border p-4">
+                            <p className="text-sm text-muted-foreground">
+                                Current Status
+                            </p>
+                            <p className={`mt-1 text-nowrap inline-flex items-center rounded-full px-2.5 py-1 font-medium mt-2 text-lg font-semibold${currentAvailabilityStatusClass(breakStatus)}`}>
+
+                                {breakStatus}
+                            </p>
+                        </div>
+                    </div>
+
+                    {attendanceError && (
+                        <p className="text-sm text-destructive" role="alert">
+                            {attendanceError}
+                        </p>
+                    )}
+
+                    {todayAttendance?.attendance?.checkIn &&
+                        !todayAttendance.attendance.checkOut && (
+                            <Button
+                                onClick={handleBreakAction}
+                                disabled={breakActionLoading}
+                            >
+                                {breakActionLoading
+                                    ? "Updating..."
+                                    : breakStatus === "On Break"
+                                        ? "End Break"
+                                        : "Start Break"}
+                            </Button>
+                        )}
+
+                    {!todayAttendance?.attendance && (
+                        <p className="text-sm text-muted-foreground">
+                            Check in to start tracking your working hours and breaks.
+                        </p>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Employee Information */}
             <Card>
@@ -138,79 +348,6 @@ function EmployeeDashboard() {
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Dashboard Summary */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">
-                            Today's Attendance
-                        </CardTitle>
-                    </CardHeader>
-
-                    <CardContent>
-                        <p className="text-2xl font-bold">
-                            {dashboard.attendance.today
-                                ? dashboard.attendance.today.status
-                                : "Not marked"}
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">
-                            Pending Leaves
-                        </CardTitle>
-                    </CardHeader>
-
-                    <CardContent>
-                        <p className="text-2xl font-bold">
-                            {dashboard.leaves.pending}
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">
-                            Leave Balance
-                        </CardTitle>
-                    </CardHeader>
-
-                    <CardContent>
-                        <p className="text-2xl font-bold">
-                            {dashboard.leaveBalances.balances.reduce(
-                                (total, balance) =>
-                                    total + balance.remaining,
-                                0
-                            )}
-                        </p>
-
-                        <p className="text-xs text-muted-foreground">
-                            Total remaining leaves
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">
-                            Notifications
-                        </CardTitle>
-                    </CardHeader>
-
-                    <CardContent>
-                        <p className="text-2xl font-bold">
-                            {dashboard.notifications.unreadCount}
-                        </p>
-
-                        <p className="text-xs text-muted-foreground">
-                            Unread notifications
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
 
             {/* Leave Balances */}
             <Card>

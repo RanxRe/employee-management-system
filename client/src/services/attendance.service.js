@@ -79,3 +79,21 @@ export const checkOut = async (checkoutData = {}) => {
 
   return response.data;
 };
+
+/* Get today's attendance and working/break times */
+export const getMyTodayAttendance = async () => {
+  const response = await api.get("/attendances/my/today");
+  return response.data;
+};
+
+/* Start a break */
+export const startBreak = async () => {
+  const response = await api.post("/attendances/break/start");
+  return response.data;
+};
+
+/* End a break */
+export const endBreak = async () => {
+  const response = await api.patch("/attendances/break/end");
+  return response.data;
+};

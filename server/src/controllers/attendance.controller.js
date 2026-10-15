@@ -3,6 +3,7 @@ import Employee from "../models/Employee.model.js";
 import Attendance from "../models/Attendence.model.js";
 import cloudinary from "../config/cloudinary.js";
 import { calculateDistance } from "../utils/distance.js";
+import { getTotalBreakMs, getWorkingTimeMs } from "../utils/attendance.utils.js";
 import { ENV } from "../utils/env.js";
 
 const getStartOfDay = (date) => {
@@ -17,6 +18,7 @@ export const createAttendance = async (req, res, next) => {
   try {
     const { employee, date, checkIn, checkOut, status, remarks } = req.body;
 
+    // 1. Required fields
     if (!employee || !date) {
       return res.status(400).json({
         success: false,
@@ -24,15 +26,62 @@ export const createAttendance = async (req, res, next) => {
       });
     }
 
-    //validate employee ID
+    // 2. Validate employee ID
     if (!mongoose.Types.ObjectId.isValid(employee)) {
       return res.status(400).json({
         success: false,
-        message: "invalid employee ID.",
+        message: "Invalid employee ID.",
       });
     }
 
+    // 3. Validate attendance date
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid attendance date.",
+      });
+    }
+
+    const attendanceDate = getStartOfDay(parsedDate);
+
+    // 4. Validate optional check-in and checkout times
+    let parsedCheckIn;
+    let parsedCheckOut;
+
+    if (checkIn !== undefined && checkIn !== null && checkIn !== "") {
+      parsedCheckIn = new Date(checkIn);
+
+      if (Number.isNaN(parsedCheckIn.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid check-in date or time.",
+        });
+      }
+    }
+
+    if (checkOut !== undefined && checkOut !== null && checkOut !== "") {
+      parsedCheckOut = new Date(checkOut);
+
+      if (Number.isNaN(parsedCheckOut.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid checkout date or time.",
+        });
+      }
+    }
+
+    if (parsedCheckIn && parsedCheckOut && parsedCheckOut <= parsedCheckIn) {
+      return res.status(400).json({
+        success: false,
+        message: "Checkout must be after check-in.",
+      });
+    }
+
+    // 5. Confirm employee exists
     const existingEmployee = await Employee.findById(employee);
+
     if (!existingEmployee) {
       return res.status(404).json({
         success: false,
@@ -40,9 +89,12 @@ export const createAttendance = async (req, res, next) => {
       });
     }
 
-    //check duplicate attendance
-    const attendanceDate = getStartOfDay(date);
-    const existingAttendance = await Attendance.findOne({ employee, date: attendanceDate });
+    // 6. Check for duplicate attendance on this date
+    const existingAttendance = await Attendance.findOne({
+      employee,
+      date: attendanceDate,
+    });
+
     if (existingAttendance) {
       return res.status(409).json({
         success: false,
@@ -50,19 +102,19 @@ export const createAttendance = async (req, res, next) => {
       });
     }
 
-    //Create attendance
+    // 7. Create attendance
     const attendance = await Attendance.create({
       employee,
-      date: getStartOfDay(date),
-      checkIn,
-      checkOut,
-      status,
-      remarks,
+      date: attendanceDate,
+      ...(parsedCheckIn && { checkIn: parsedCheckIn }),
+      ...(parsedCheckOut && { checkOut: parsedCheckOut }),
+      ...(status !== undefined && { status }),
+      ...(remarks !== undefined && { remarks }),
     });
 
     return res.status(201).json({
       success: true,
-      message: "Attendance created successfully",
+      message: "Attendance created successfully.",
       attendance,
     });
   } catch (error) {
@@ -145,10 +197,29 @@ export const getAllAttendance = async (req, res, next) => {
       });
     }
 
-    return res.status(200).json({
+    const attendanceWithWorkingTime = attendance.map((record) => {
+      const attendanceData = record.toObject();
+
+      const totalBreakMs = getTotalBreakMs(record);
+      const workingMs = getWorkingTimeMs(record);
+
+      const adjustmentMs = (record.workingTimeAdjustments || []).reduce(
+        (total, adjustment) => total + (adjustment.adjustmentMs || 0),
+        0,
+      );
+
+      return {
+        ...attendanceData,
+        totalBreakMs,
+        adjustmentMs,
+        workingMs,
+      };
+    });
+
+    res.status(200).json({
       success: true,
-      count: attendance.length,
-      attendance,
+      count: attendanceWithWorkingTime.length,
+      attendance: attendanceWithWorkingTime,
     });
   } catch (error) {
     next(error);
@@ -246,6 +317,41 @@ export const updateAttendance = async (req, res, next) => {
       success: true,
       message: "Attendance updated successfully.",
       attendance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteAttendance = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Validate attendance ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid attendance ID.",
+      });
+    }
+
+    // 2. Find the attendance record
+    const attendance = await Attendance.findById(id);
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance record not found.",
+      });
+    }
+
+    // 3. Delete the attendance record
+    await Attendance.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Attendance record deleted successfully.",
+      deletedAttendanceId: id,
     });
   } catch (error) {
     next(error);
@@ -809,6 +915,542 @@ export const getMyAttendanceSummary = async (req, res, next) => {
         leave,
         totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const startBreak = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({
+      user: req.user._id,
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    if (employee.employmentStatus !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "Your employment status does not allow breaks.",
+      });
+    }
+
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const attendance = await Attendance.findOne({
+      employee: employee._id,
+      date: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    if (!attendance || !attendance.checkIn) {
+      return res.status(400).json({
+        success: false,
+        message: "Please check in before starting a break.",
+      });
+    }
+
+    if (attendance.checkOut) {
+      return res.status(409).json({
+        success: false,
+        message: "You have already checked out today.",
+      });
+    }
+
+    if (attendance.breakStartedAt) {
+      return res.status(409).json({
+        success: false,
+        message: "You are already on a break.",
+      });
+    }
+
+    attendance.breakStartedAt = now;
+    attendance.breakStartedBy = req.user._id;
+    await attendance.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Break started successfully.",
+      attendance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const endBreak = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({
+      user: req.user._id,
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    if (employee.employmentStatus !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "Your employment status does not allow breaks.",
+      });
+    }
+
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const attendance = await Attendance.findOne({
+      employee: employee._id,
+      date: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    if (!attendance || !attendance.checkIn) {
+      return res.status(400).json({
+        success: false,
+        message: "No check-in found for today.",
+      });
+    }
+
+    if (attendance.checkOut) {
+      return res.status(409).json({
+        success: false,
+        message: "You have already checked out today.",
+      });
+    }
+
+    if (!attendance.breakStartedAt) {
+      return res.status(409).json({
+        success: false,
+        message: "You are not currently on a break.",
+      });
+    }
+
+    const breakStart = new Date(attendance.breakStartedAt);
+    const durationMs = now.getTime() - breakStart.getTime();
+
+    if (durationMs < 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Invalid break timestamps.",
+      });
+    }
+
+    attendance.breaks.push({
+      start: breakStart,
+      end: now,
+      durationMs: now.getTime() - breakStart.getTime(),
+      startedBy: attendance.breakStartedBy,
+      endedBy: req.user._id,
+    });
+
+    attendance.breakStartedAt = null;
+    attendance.breakStartedBy = null;
+
+    await attendance.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Break ended successfully.",
+      attendance,
+      breakDurationMs: durationMs,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adminStartBreak = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { dateTime } = req.body;
+
+    // 1. Validate attendance ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid attendance ID.",
+      });
+    }
+
+    // 2. Validate custom date and time
+    if (!dateTime || typeof dateTime !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "A valid dateTime is required.",
+      });
+    }
+
+    const startTime = new Date(dateTime);
+
+    if (Number.isNaN(startTime.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid dateTime.",
+      });
+    }
+
+    // 3. Find attendance and employee
+    const attendance = await Attendance.findById(id);
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance record not found.",
+      });
+    }
+
+    const employee = await Employee.findById(attendance.employee);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    // 4. Validate attendance state
+    if (!attendance.checkIn) {
+      return res.status(400).json({
+        success: false,
+        message: "The employee must check in before starting a break.",
+      });
+    }
+
+    if (attendance.checkOut) {
+      return res.status(409).json({
+        success: false,
+        message: "Cannot start a break after checkout.",
+      });
+    }
+
+    if (attendance.breakStartedAt) {
+      return res.status(409).json({
+        success: false,
+        message: "A break is already in progress.",
+      });
+    }
+
+    if (startTime < attendance.checkIn) {
+      return res.status(400).json({
+        success: false,
+        message: "Break start cannot be before check-in.",
+      });
+    }
+
+    if (startTime > new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Break start cannot be in the future.",
+      });
+    }
+
+    const lastBreak = attendance.breaks?.[attendance.breaks.length - 1];
+
+    if (lastBreak && startTime < lastBreak.end) {
+      return res.status(400).json({
+        success: false,
+        message: "Break start cannot be before the previous break ended.",
+      });
+    }
+
+    // 5. Save the custom break start time and admin
+    attendance.breakStartedAt = startTime;
+    attendance.breakStartedBy = req.user._id;
+
+    await attendance.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Break started successfully by admin.",
+      attendance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adminEndBreak = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { dateTime } = req.body;
+
+    // 1. Validate attendance ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid attendance ID.",
+      });
+    }
+
+    // 2. Validate custom date and time
+    if (!dateTime || typeof dateTime !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "A valid dateTime is required.",
+      });
+    }
+
+    const endTime = new Date(dateTime);
+
+    if (Number.isNaN(endTime.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid dateTime.",
+      });
+    }
+
+    // 3. Find attendance and employee
+    const attendance = await Attendance.findById(id);
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance record not found.",
+      });
+    }
+
+    const employee = await Employee.findById(attendance.employee);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    // 4. Validate attendance and break state
+    if (!attendance.checkIn) {
+      return res.status(400).json({
+        success: false,
+        message: "The employee must check in before ending a break.",
+      });
+    }
+
+    if (!attendance.breakStartedAt) {
+      return res.status(409).json({
+        success: false,
+        message: "There is no break currently in progress.",
+      });
+    }
+
+    const breakStart = new Date(attendance.breakStartedAt);
+
+    if (endTime <= breakStart) {
+      return res.status(400).json({
+        success: false,
+        message: "Break end time must be after its start time.",
+      });
+    }
+
+    if (endTime > new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Break end time cannot be in the future.",
+      });
+    }
+
+    if (attendance.checkOut && endTime > new Date(attendance.checkOut)) {
+      return res.status(400).json({
+        success: false,
+        message: "Break end time cannot be after checkout.",
+      });
+    }
+
+    // 5. Save the completed break and its audit details
+    const durationMs = endTime.getTime() - breakStart.getTime();
+
+    attendance.breaks.push({
+      start: breakStart,
+      end: endTime,
+      durationMs,
+      startedBy: attendance.breakStartedBy || req.user._id,
+      endedBy: req.user._id,
+    });
+
+    attendance.breakStartedAt = null;
+    attendance.breakStartedBy = null;
+
+    await attendance.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Break ended successfully by admin.",
+      attendance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adjustWorkingTime = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { adjustmentMinutes, reason } = req.body;
+
+    // 1. Validate attendance ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid attendance ID.",
+      });
+    }
+
+    // 2. Validate adjustment
+    if (
+      typeof adjustmentMinutes !== "number" ||
+      !Number.isFinite(adjustmentMinutes) ||
+      adjustmentMinutes === 0 ||
+      Math.abs(adjustmentMinutes) > 1440
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "adjustmentMinutes must be a non-zero number between -1440 and 1440.",
+      });
+    }
+
+    // 3. Validate reason
+    if (typeof reason !== "string" || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "A reason for the adjustment is required.",
+      });
+    }
+
+    // 4. Find attendance record
+    const attendance = await Attendance.findById(id);
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance record not found.",
+      });
+    }
+
+    if (!attendance.checkIn) {
+      return res.status(400).json({
+        success: false,
+        message: "Working time cannot be adjusted without a check-in.",
+      });
+    }
+
+    // 5. Convert minutes to milliseconds and save audit details
+    const adjustmentMs = Math.round(adjustmentMinutes * 60_000);
+
+    attendance.workingTimeAdjustments.push({
+      adjustmentMs,
+      reason: reason.trim(),
+      adjustedBy: req.user._id,
+      adjustedAt: new Date(),
+    });
+
+    await attendance.save();
+
+    // 6. Calculate updated totals
+    const totalBreakMs = getTotalBreakMs(attendance);
+    const workingMs = getWorkingTimeMs(attendance);
+
+    const adjustmentMsTotal = attendance.workingTimeAdjustments.reduce(
+      (total, adjustment) => total + adjustment.adjustmentMs,
+      0,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Working time adjusted successfully.",
+      attendance: {
+        ...attendance.toObject(),
+        totalBreakMs,
+        adjustmentMs: adjustmentMsTotal,
+        workingMs,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyTodayAttendance = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({ user: req.user._id });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found.",
+      });
+    }
+
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const attendance = await Attendance.findOne({
+      employee: employee._id,
+      date: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    if (!attendance) {
+      return res.status(200).json({
+        success: true,
+        message: "No attendance recorded for today.",
+        attendance: null,
+        breakStatus: "Not Checked In",
+        workingMs: 0,
+        totalBreakMs: 0,
+      });
+    }
+
+    const checkInTime = attendance.checkIn ? new Date(attendance.checkIn).getTime() : null;
+    const endTime = attendance.checkOut ? new Date(attendance.checkOut).getTime() : now.getTime();
+
+    // Add up all completed breaks.
+    let totalBreakMs = attendance.breaks.reduce((total, item) => total + item.durationMs, 0);
+
+    // Include the current break if one is in progress.
+    if (attendance.breakStartedAt) {
+      const currentBreakStart = new Date(attendance.breakStartedAt).getTime();
+
+      totalBreakMs += Math.max(0, endTime - currentBreakStart);
+    }
+
+    // Working time excludes all break time.
+    const elapsedMs = checkInTime ? Math.max(0, endTime - checkInTime) : 0;
+    const workingMs = Math.max(0, elapsedMs - totalBreakMs);
+    let breakStatus = "Not Checked In";
+
+    if (attendance.checkOut) {
+      breakStatus = "Checked Out";
+    } else if (attendance.breakStartedAt) {
+      breakStatus = "On Break";
+    } else if (attendance.checkIn) {
+      breakStatus = "Available";
+    }
+
+    return res.status(200).json({
+      success: true,
+      attendance,
+      breakStatus,
+      workingMs,
+      totalBreakMs,
     });
   } catch (error) {
     next(error);

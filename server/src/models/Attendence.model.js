@@ -23,6 +23,70 @@ const attendanceSchema = new mongoose.Schema(
       default: null,
     },
 
+    // Current break, if the employee is on a break
+    breakStartedAt: {
+      type: Date,
+      default: null,
+    },
+
+    breakStartedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+      default: null,
+    },
+
+    // History of completed breaks
+    breaks: [
+      {
+        start: {
+          type: Date,
+          required: true,
+        },
+        end: {
+          type: Date,
+          required: true,
+        },
+        durationMs: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        startedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "users",
+          default: null,
+        },
+        endedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "users",
+          default: null,
+        },
+      },
+    ],
+
+    workingTimeAdjustments: [
+      {
+        adjustmentMs: {
+          type: Number,
+          required: true,
+        },
+        reason: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        adjustedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "users",
+          required: true,
+        },
+        adjustedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
     status: {
       type: String,
       enum: ["present", "absent", "half_day", "leave"],
